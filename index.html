@@ -14,11 +14,12 @@
         h1 { font-size: 5rem; font-weight: 700; background: linear-gradient(to right, #60a5fa, #a5f3fc); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 10px; }
         .slogan { font-size: 1.7rem; color: #e2e8f0; margin-bottom: 50px; font-weight: 300; }
         .input-box { background: rgba(255,255,255,0.1); backdrop-filter: blur(15px); border-radius: 24px; padding: 50px 40px; box-shadow: 0 20px 50px rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.15); max-width: 600px; margin: 0 auto; }
-        input[type="email"], input[type="file"] { width: 100%; padding: 18px 20px; margin: 18px 0; border: none; border-radius: 14px; background: rgba(255,255,255,0.15); color: white; font-size: 1.1rem; }
+        input[type="email"], input[type="file"], input[type="number"] { width: 100%; padding: 18px 20px; margin: 18px 0; border: none; border-radius: 14px; background: rgba(255,255,255,0.15); color: white; font-size: 1.1rem; }
         input::placeholder { color: #cbd5e1; }
         button { background: #0ea5e9; color: white; border: none; padding: 18px 50px; font-size: 1.3rem; border-radius: 14px; cursor: pointer; margin-top: 20px; box-shadow: 0 10px 30px rgba(14,165,233,0.5); transition: all 0.3s; }
         button:hover { background: #0c8bd4; transform: translateY(-4px); }
         #estado { margin-top: 15px; color: #fbbf24; font-weight: 500; height: 24px; }
+        .manual-edit { display: none; margin-top: 20px; text-align: left; }
         .resultado { display: none; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 30px; margin-top: 50px; }
         .tarifa { background: rgba(255,255,255,0.1); backdrop-filter: blur(10px); border-radius: 20px; padding: 30px; border: 1px solid rgba(255,255,255,0.1); transition: all 0.4s; }
         .tarifa:hover { transform: translateY(-12px); box-shadow: 0 25px 50px rgba(0,0,0,0.5); }
@@ -36,12 +37,19 @@
             <input type="file" id="factura" accept=".pdf,.jpg,.jpeg,.png" required>
             <button id="botonComparar">¡Descubre cuánto puedes ahorrar!</button>
             <p id="estado"></p>
+            <div class="manual-edit">
+                <label>Consumo detectado (kWh):</label>
+                <input type="number" id="consumoManual" placeholder="Ej: 250" value="350">
+                <label>Gasto detectado (€):</label>
+                <input type="number" step="0.01" id="gastoManual" placeholder="Ej: 45.67" value="85">
+                <button onclick="usarManual()">Usar estos valores</button>
+            </div>
         </div>
         <div id="resultado" class="resultado"></div>
     </div>
 
     <script>
-        // TUS COMPAÑÍAS Y PRECIOS EXACTOS (con descuentos realistas)
+        // TUS COMPAÑÍAS Y PRECIOS EXACTOS (con descuentos añadidos para ahorros realistas)
         const tarifas = [
             { empresa: "Endesa", nombre: "Permanencia 12 meses", precio_kwh_punta: 0.108, precio_kwh_llano: 0.108, precio_kwh_valle: 0.108, potencia_punta: 0.122, potencia_valle: 0.052, descuento_primer_ano: 28 },
             { empresa: "Iberdrola", nombre: "Sin permanencia", precio_kwh_punta: 0.142, precio_kwh_llano: 0.112, precio_kwh_valle: 0.082, potencia_punta: 0.124, potencia_valle: 0.054, descuento_primer_ano: 22 },
@@ -57,9 +65,10 @@
             const email = document.getElementById("email").value.trim();
             const file = document.getElementById("factura").files[0];
             const estado = document.getElementById("estado");
+            const manualEdit = document.querySelector('.manual-edit');
 
             if (!email || !file) {
-                estado.textContent = "Email y factura obligatorios";
+                estado.textContent = "⚠️ Email y factura obligatorios";
                 return;
             }
 
@@ -77,25 +86,50 @@
 
                 const texto = text.toLowerCase();
 
-                // Consumo en kWh
-                const consumoMatch = texto.match(/consumo.*?(\d{3,5})\s*kwh|facturado.*?(\d{3,5})\s*kwh|total.*?(\d{3,5})\s*kwh|(\d{3,5})\s*kwh/i);
-                if (consumoMatch) consumo = parseInt(consumoMatch[1] || consumoMatch[2] || consumoMatch[3] || consumoMatch[4]) || 350;
+                // REGEX MEJORADO para consumo kWh (más patrones comunes en facturas españolas)
+                const consumoMatch = texto.match(/(consumo|energía|facturado|total energía|kwh consumido|cuenta energía).*?(\d{2,4})(?:,|\.)?\d*\s*kwh|(\d{2,4})(?:,|\.)?\d*\s*kwh\s*(consumo|energía|facturado)/i);
+                if (consumoMatch) {
+                    const numStr = consumoMatch[2] || consumoMatch[3] || consumoMatch[4] || '';
+                    consumo = parseInt(numStr.replace(',', '')) || 350;
+                }
 
-                // Importe total
-                const gastoMatch = texto.match(/importe total.*?(\d+[\.,]\d{2})|a pagar.*?(\d+[\.,]\d{2})|total factura.*?(\d+[\.,]\d{2})|(\d+[\.,]\d{2})\s*€/i);
-                if (gastoMatch) gastoActual = parseFloat((gastoMatch[1] || gastoMatch[2] || gastoMatch[3] || gastoMatch[4] || "85").replace(',', '.'));
+                // REGEX MEJORADO para gasto € (más patrones para importe total)
+                const gastoMatch = texto.match(/(importe total|a pagar|total factura|cuenta total|base imponible).*?€?\s*(\d{1,3}(?:,|\.)?\d{2})|€?\s*(\d{1,3}(?:,|\.)?\d{2})\s*(importe|total|a pagar)/i);
+                if (gastoMatch) {
+                    const numStr = gastoMatch[2] || gastoMatch[3] || gastoMatch[4] || '';
+                    gastoActual = parseFloat(numStr.replace(',', '.')) || 85;
+                }
 
-                estado.textContent = `Detectado: ${consumo} kWh · ${gastoActual.toFixed(0)}€/mes`;
+                // Validación razonable (evita números locos)
+                if (consumo < 50 || consumo > 2000) consumo = 350;
+                if (gastoActual < 10 || gastoActual > 500) gastoActual = 85;
+
+                estado.textContent = `Detectado: ${consumo} kWh · ${gastoActual.toFixed(2)}€`;
+                manualEdit.style.display = 'block'; // Muestra opción de editar
+                document.getElementById('consumoManual').value = consumo;
+                document.getElementById('gastoManual').value = gastoActual.toFixed(2);
             } catch (e) {
-                estado.textContent = "Usando estimación (350 kWh · 85€)";
+                estado.textContent = "No se pudo leer la factura (usando estimación)";
+                manualEdit.style.display = 'block';
             }
 
             // Guardar email
             fetch(GOOGLE_SCRIPT_URL + "?email=" + encodeURIComponent(email))
-                .catch(() => console.log("Email guardado o no, seguimos"));
+                .catch(() => {});
 
-            // Mostrar resultados
-            setTimeout(() => mostrarResultados(consumo, gastoActual), 1000);
+            // Espera para que veas el detectado, luego calcula con manual si usas
+            setTimeout(() => {
+                const consumoFinal = parseInt(document.getElementById('consumoManual').value) || consumo;
+                const gastoFinal = parseFloat(document.getElementById('gastoManual').value) || gastoActual;
+                mostrarResultados(consumoFinal, gastoFinal);
+            }, 2000);
+        }
+
+        function usarManual() {
+            // Calcula inmediatamente con valores manuales
+            const consumo = parseInt(document.getElementById('consumoManual').value) || 350;
+            const gastoActual = parseFloat(document.getElementById('gastoManual').value) || 85;
+            mostrarResultados(consumo, gastoActual);
         }
 
         function mostrarResultados(consumo, gastoActual) {
@@ -105,7 +139,7 @@
             tarifas.forEach(t => {
                 const precioMedioKwh = (t.precio_kwh_punta + t.precio_kwh_llano + t.precio_kwh_valle) / 3;
                 const costeEnergia = consumo * precioMedioKwh;
-                const costePotencia = (t.potencia_punta + t.potencia_valle) * 110 * 0.30; // más realista
+                const costePotencia = (t.potencia_punta + t.potencia_valle) * 110 * 0.30; // Más realista
                 const costeTotal = costeEnergia + costePotencia + 15;
                 const precioConDescuento = costeTotal * (1 - t.descuento_primer_ano / 100);
                 const ahorroAnual = Math.round((gastoActual - precioConDescuento) * 12);
