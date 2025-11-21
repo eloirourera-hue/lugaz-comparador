@@ -7,7 +7,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/tesseract.js@4.1.1/dist/tesseract.min.js"></script>
     <style>
-        /* Estilos CSS (tomados de tu style.css y adaptados) */
+        /* Estilos CSS (integrados para facilitar el copiar y pegar) */
         body{margin:0;font-family:'Poppins',sans-serif;background:linear-gradient(135deg,#0f172a,#1e40af,#0ea5e9);color:#fff;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;background-attachment: fixed;}
         .card{background:rgba(255,255,255,0.1);backdrop-filter:blur(15px);border-radius:24px;padding:40px;max-width:500px;width:100%;box-shadow:0 20px 50px rgba(0,0,0,0.4);border: 1px solid rgba(255,255,255,0.15);}
         h1{font-size:3.5rem;text-align:center;background:linear-gradient(to right,#60a5fa,#a5f3fc);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
@@ -52,14 +52,14 @@
 </div>
 
 <script>
-    // ⚠️ ATENCIÓN: REEMPLAZA ESTA URL CON LA QUE OBTUVISTE AL DESPLEGAR TU GOOGLE APPS SCRIPT.
-    const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxVi6XhMv1YpI2qZU97Rao8DhUdg0esgMJr3JdZEU05xhPnhiG_UWRq5LxbyD0QnHYw/exec";
+    // ⚠️ URL DE TU GOOGLE APPS SCRIPT
+    const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzn_u0C3nALD6Nepy5cBKmygioyvyMHp83AyWCwdC6Ta4lc-yccXnnb6f-MfoJBnAxIKQ/exec";
 
     // -----------------------------------------------------------------------------
-    // DATOS DE TARIFAS CORREGIDOS (TOMADOS DE TU tarifas.json Y SIMPLIFICADOS)
-    // Usamos 'kwh_p', 'kwh_l', 'kwh_v', 'pot_p', 'pot_v' para la fórmula.
+    // DATOS DE TARIFAS (corregidos y basados en tu tarifas.json)
     // -----------------------------------------------------------------------------
     const tarifas = [
+        // He usado una nomenclatura corta (kwh_p/l/v, pot_p/v) para simplificar la fórmula.
         { empresa: "Endesa", nombre: "One Luz 3 Periodos", kwh_p: 0.139, kwh_l: 0.109, kwh_v: 0.079, pot_p: 0.122, pot_v: 0.052, descuento: 25 },
         { empresa: "Iberdrola", nombre: "Plan Estable Online", kwh_p: 0.142, kwh_l: 0.112, kwh_v: 0.082, pot_p: 0.124, pot_v: 0.054, descuento: 20 },
         { empresa: "Naturgy", nombre: "Tarifa por Uso Nocturna", kwh_p: 0.155, kwh_l: 0.115, kwh_v: 0.069, pot_p: 0.130, pot_v: 0.045, descuento: 30 },
@@ -67,28 +67,29 @@
     ];
     // -----------------------------------------------------------------------------
 
-    // Variables globales (valores por defecto para el modo manual)
+    // Variables globales (valores por defecto)
     let consumoGlobal = 350; // kWh/mes
     let potenciaGlobal = 5.75; // kW
     let gastoActualGlobal = 85.00; // €/mes
-    const alquilerGlobal = 0.0267; // Precio alquiler contador (€/kW/día - Aprox. 0.81€/mes)
+    const alquilerGlobal = 0.0267; // Precio alquiler contador (€/día)
 
-    // --- FUNCIONES DE EXTRACCIÓN MEJORADAS (Usando Tesseract) ---
+    // --- FUNCIÓN DE EXTRACCIÓN MEJORADA (Usando Tesseract) ---
     function extraerDatos(texto) {
+        // Limpiamos el texto: a minúsculas, reemplazamos comas por puntos, eliminamos caracteres no numéricos relevantes.
         const t = texto.toLowerCase().replace(/[^0-9.,\s€kw]/g, ' ').replace(/,/g, '.');
         let consumo = consumoGlobal;
         let potencia = potenciaGlobal;
         let gasto = gastoActualGlobal;
         
-        // 1. Consumo Mensual (Busca 3-6 dígitos seguidos de kWh/mes)
+        // 1. Consumo Mensual (Busca números seguidos de kWh/mes, cerca de "consumo")
         const c = t.match(/consumo.*?\s*(\d{3,6})\s*kwh/i) || t.match(/(\d{3,6})\s*kwh/i);
         if (c) consumo = parseFloat(c[1]);
 
-        // 2. Potencia contratada (Busca números con o sin decimales cerca de kW)
+        // 2. Potencia contratada (Busca números con o sin decimales cerca de "potencia contratada" o "kw")
         const p = t.match(/potencia\s*contratada.*?\s*(\d+[\.]?\d*)\s*kw/i) || t.match(/(\d+[\.]?\d*)\s*kw/i);
         if (p) potencia = parseFloat(p[1]);
 
-        // 3. Gasto total (Busca Total o Importe seguido de números con decimales y €)
+        // 3. Gasto total (Busca "total" o "importe" seguido de números con decimales y €)
         const g = t.match(/(?:total|importe).*?(\d{2,4}\.\d{2})\s*€/i);
         if (g) gasto = parseFloat(g[1]);
         
@@ -103,14 +104,19 @@
         const manual = document.getElementById("manual");
         const datosExtraidos = document.getElementById("datos-extraidos");
 
-        if (!email) { estado.textContent = "⚠️ Falta el email"; return; }
-        if (!file) { manual.style.display = "block"; estado.textContent = "Sube la factura o rellena manualmente"; return; }
+        if (!email) { estado.textContent = "⚠️ Por favor, introduce tu email"; return; }
+        
+        // Si no hay archivo, mostramos el modo manual y salimos de la función
+        if (!file) {
+             manual.style.display = "block"; 
+             estado.textContent = "Sube la factura o rellena manualmente"; 
+             return; 
+        }
 
         estado.textContent = "Leyendo factura... (Esto puede tardar unos segundos)";
         datosExtraidos.style.display = "none";
         
         try {
-            // Leer texto de la factura (PDF o imagen)
             const { data: { text } } = await Tesseract.recognize(file, 'spa', { logger: m => m });
             
             const datos = extraerDatos(text);
@@ -121,7 +127,7 @@
             estado.textContent = "✅ Lectura completada. Datos extraídos:";
             datosExtraidos.innerHTML = `Consumo: <strong>${consumoGlobal.toFixed(0)} kWh/mes</strong> · Potencia: <strong>${potenciaGlobal.toFixed(2)} kW</strong> · Gasto: <strong>${gastoActualGlobal.toFixed(2)} €/mes</strong>`;
             datosExtraidos.style.display = "block";
-            manual.style.display = "block"; // Mostrar modo manual por si el usuario quiere ajustarlos
+            manual.style.display = "block"; 
 
         } catch (e) {
             estado.textContent = "❌ No se pudo leer la factura → usa modo manual";
@@ -156,9 +162,9 @@
     function calcularFinal() {
         const resultado = document.getElementById("resultado");
         const email = document.getElementById("email").value.trim();
-        const dias = 30; // Cálculos en base a un mes (30 días)
+        const dias = 30; 
         
-        // Distribución de Consumo Típica (3 Periodos 2.0TD) - Esto es una aproximación estándar
+        // Distribución de Consumo Típica (2.0TD) - Aproximación estándar
         const factor_valle = 0.45;
         const factor_llano = 0.29;
         const factor_punta = 0.26;
@@ -175,28 +181,26 @@
             const coste_energia_total = coste_energia_punta + coste_energia_llano + coste_energia_valle;
 
             // 2. Coste de Potencia (Fijo - P1 y P2)
-            // t.pot_p y t.pot_v están en €/kW/día
             const coste_potencia_total = (potenciaGlobal * t.pot_p * dias) + (potenciaGlobal * t.pot_v * dias);
 
-            // 3. Alquiler del Contador (Precio regulado - Aprox. 0.0267 €/día)
+            // 3. Alquiler del Contador (Precio regulado)
             const coste_alquiler = potenciaGlobal * alquilerGlobal * dias;
 
             // 4. Base Imponible (Energía + Potencia + Alquiler)
             const base = coste_energia_total + coste_potencia_total + coste_alquiler;
 
             // 5. Impuestos: Eléctrico (IE) e IVA
-            // El Impuesto Eléctrico es 5.113% sobre Energía + Potencia (base)
             const impuesto_electrico = base * 0.05113; 
             const total_antes_iva = base + impuesto_electrico;
-            const iva = total_antes_iva * 0.21; // 21% sobre todo lo anterior
+            const iva = total_antes_iva * 0.21; 
 
             // 6. Coste Total Mensual Sin Descuento
             const totalSinDesc = total_antes_iva + iva;
 
-            // 7. Coste Total Mensual Con Descuento (t.descuento es el porcentaje, ej: 25)
+            // 7. Coste Total Mensual Con Descuento
             const totalConDesc = totalSinDesc * (1 - t.descuento / 100);
 
-            // 8. Ahorro Anual (Comparando Gasto Actual Mensual vs Nuevo Coste Mensual)
+            // 8. Ahorro Anual (Gasto Actual Mensual vs Nuevo Coste Mensual)
             const ahorroMensual = gastoActualGlobal - totalConDesc;
             const ahorroAnual = Math.round(ahorroMensual * 12);
             
@@ -234,7 +238,7 @@
                 ofertas: datosGuardado
             };
             
-            // Enviamos el email y los datos completos serializados
+            // Enviamos el email y los datos completos serializados al Google Script
             fetch(GOOGLE_SCRIPT_URL + "?email=" + encodeURIComponent(email) + "&datos=" + encodeURIComponent(JSON.stringify(datosFinales)));
         }
     }
