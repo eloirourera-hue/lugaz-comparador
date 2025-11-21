@@ -5,90 +5,139 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Lugaz - Comparador de Luz</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/tesseract.js@4.1.1/dist/tesseract.min.js"></script>
     <style>
-        :root { --grad: linear-gradient(135deg, #0f172a 0%, #1e40af 50%, #0ea5e9 100%); }
-        * { margin:0; padding:0; box-sizing:border-box; }
-        body { font-family: 'Poppins', sans-serif; background: var(--grad); color: white; min-height: 100vh; padding: 20px; display: flex; align-items: center; justify-content: center; }
-        .card { background: rgba(255,255,255,0.1); backdrop-filter: blur(15px); border-radius: 24px; padding: 40px; width: 100%; max-width: 500px; box-shadow: 0 20px 50px rgba(0,0,0,0.4); }
-        h1 { font-size: 3.5rem; text-align: center; background: linear-gradient(to right, #60a5fa, #a5f3fc); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 10px; }
-        p { text-align: center; font-size: 1.4rem; margin-bottom: 30px; color: #e2e8f0; }
-        input { width: 100%; padding: 16px; margin: 12px 0; background: rgba(255,255,255,0.15); border: none; border-radius: 12px; color: white; font-size: 1.1rem; }
-        input::placeholder { color: #cbd5e1; }
-        button { width: 100%; padding: 18px; background: #0ea5e9; color: white; border: none; border-radius: 12px; font-size: 1.3rem; cursor: pointer; margin-top: 20px; }
-        button:hover { background: #0c8bd4; }
-        .resultado { margin-top: 50px; display: grid; gap: 20px; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
-        .tarifa { background: rgba(255,255,255,0.1); padding: 25px; border-radius: 16px; text-align: center; transition: 0.3s; }
-        .tarifa:hover { transform: translateY(-10px); box-shadow: 0 20px 40px rgba(0,0,0,0.4); }
-        .empresa { font-size: 1.8rem; font-weight: 700; }
-        .precio { font-size: 2.8rem; color: #34d399; margin: 10px 0; }
-        .ahorro { font-size: 1.3rem; color: #fbbf24; }
+        body{margin:0;font-family:'Poppins',sans-serif;background:linear-gradient(135deg,#0f172a,#1e40af,#0ea5e9);color:#fff;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+        .card{background:rgba(255,255,255,0.1);backdrop-filter:blur(15px);border-radius:24px;padding:40px;max-width:500px;width:100%;box-shadow:0 20px 50px rgba(0,0,0,0.4)}
+        h1{font-size:3.5rem;text-align:center;background:linear-gradient(to right,#60a5fa,#a5f3fc);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+        input,button{width:100%;padding:16px;margin:12px 0;border:none;border-radius:12px;font-size:1.1rem}
+        input{background:rgba(255,255,255,0.15);color:#fff}
+        input::placeholder{color:#cbd5e1}
+        button{background:#0ea5e9;color:#fff;cursor:pointer;font-size:1.3rem}
+        button:hover{background:#0c8bd4}
+        #estado{margin-top:15px;color:#fbbf24;font-weight:600;text-align:center}
+        .manual{display:none;background:rgba(255,255,255,0.1);padding:20px;border-radius:16px;margin-top:20px}
+        .resultado{display:none;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:25px;margin-top:40px}
+        .tarifa{background:rgba(255,255,255,0.1);padding:25px;border-radius:16px;text-align:center;transition:0.3s}
+        .tarifa:hover{transform:translateY(-10px);box-shadow:0 20px 40px rgba(0,0,0,0.4)}
+        .empresa{font-size:1.9rem;font-weight:700}
+        .precio{font-size:3rem;color:#34d399;margin:10px 0}
+        .ahorro{font-size:1.3rem;color:#fbbf24}
     </style>
 </head>
 <body>
-    <div class="card">
-        <h1>Lugaz</h1>
-        <p>Compara y ahorra hasta 400€ al año</p>
-        
-        <input type="email" id="email" placeholder="Tu email" required>
-        <input type="number" id="consumo" placeholder="Consumo mensual (kWh) → ej: 320" required>
-        <input type="number" step="0.01" id="potencia" placeholder="Potencia contratada (kW) → ej: 5.75" value="5.75" required>
-        <input type="number" step="0.01" id="gasto" placeholder="Gasto actual en factura (€) → ej: 78.45" required>
-        
-        <button onclick="calcular()">¡Descubre cuánto ahorras!</button>
-        
-        <div id="resultado" class="resultado"></div>
+<div class="card">
+    <h1>Lugaz</h1>
+    <p style="text-align:center;font-size:1.4rem;margin-bottom:30px">Sube tu factura o pon los datos manualmente</p>
+    
+    <input type="email" id="email" placeholder="Tu email" required>
+    <input type="file" id="factura" accept=".pdf,.jpg,.jpeg,.png">
+    <button onclick="procesar()">¡Calcular ahorro!</button>
+    <div id="estado">Sube tu factura o usa modo manual ↓</div>
+
+    <div class="manual" id="manual">
+        <p>Modo manual (si la factura no se lee bien):</p>
+        <input type="number" id="consumo" placeholder="Consumo kWh (ej: 320)">
+        <input type="number" step="0.01" id="potencia" placeholder="Potencia contratada kW (ej: 5.75)" value="5.75">
+        <input type="number" step="0.01" id="gasto" placeholder="Gasto actual € (ej: 78.45)">
+        <button onclick="calcularManual()">Calcular</button>
     </div>
 
-    <script>
-        const tarifas = [
-            { empresa: "Endesa", nombre: "Permanencia 12 meses", kwh: 0.108, pot_punta: 0.122, pot_valle: 0.052, descuento: 28 },
-            { empresa: "Iberdrola", nombre: "Sin permanencia", kwh: 0.112, pot_punta: 0.124, pot_valle: 0.054, descuento: 22 },
-            { empresa: "Eleia", nombre: "Permanencia 12 meses", kwh: 0.115, pot_punta: 0.130, pot_valle: 0.045, descuento: 35 },
-            { empresa: "Plenitude", nombre: "Sin permanencia", kwh: 0.104, pot_punta: 0.118, pot_valle: 0.050, descuento: 20 }
-        ];
+    <div id="resultado" class="resultado"></div>
+</div>
 
-        function calcular() {
-            const email = document.getElementById("email").value.trim();
-            const consumo = parseFloat(document.getElementById("consumo").value) || 350;
-            const potencia = parseFloat(document.getElementById("potencia").value) || 5.75;
-            const gastoActual = parseFloat(document.getElementById("gasto").value) || 85;
-            const alquiler = 0.81;
-            const dias = 30;
+<script>
+    const tarifas = [
+        { empresa: "Endesa", nombre: "Permanencia 12 meses", kwh: 0.108, pot_punta: 0.122, pot_valle: 0.052, descuento: 28 },
+        { empresa: "Iberdrola", nombre: "Sin permanencia", kwh: 0.112, pot_punta: 0.124, pot_valle: 0.054, descuento: 22 },
+        { empresa: "Eleia", nombre: "Permanencia 12 meses", kwh: 0.115, pot_punta: 0.130, pot_valle: 0.045, descuento: 35 },
+        { empresa: "Plenitude", nombre: "Sin permanencia", kwh: 0.104, pot_punta: 0.118, pot_valle: 0.050, descuento: 20 }
+    ];
 
-            if (!email || !consumo || !potencia || !gastoActual) {
-                alert("Rellena todos los campos");
-                return;
+    let consumoGlobal = 350;
+    let potenciaGlobal = 5.75;
+    let gastoActualGlobal = 85;
+    let alquilerGlobal = 0.81;
+
+    async function procesar() {
+        const email = document.getElementById("email").value.trim();
+        const file = document.getElementById("factura").files[0];
+        const estado = document.getElementById("estado");
+        const manual = document.getElementById("manual");
+
+        if (!email) { estado.textContent = "Falta el email"; return; }
+
+        if (file) {
+            estado.textContent = "Leyendo factura...";
+            try {
+                const { data: { text } } = await Tesseract.recognize(file, 'spa', { logger: m => m });
+                const t = text.toLowerCase().replace(/[^0-9.,\s]/g, ' ').replace(/,/g, '.');
+
+                // Consumo
+                const c = t.match(/(\d{3,5})\s*kwh/i);
+                if (c) consumoGlobal = parseInt(c[1]);
+
+                // Potencia contratada
+                const p = t.match(/(\d+[.,]?\d*)\s*kw/i);
+                if (p) potenciaGlobal = parseFloat(p[1].replace(',', '.'));
+
+                // Gasto total
+                const g = t.match(/(\d{2,4}[.,]\d{2})\s*€/i);
+                if (g) gastoActualGlobal = parseFloat(g[1].replace(',', '.'));
+
+                estado.textContent = `Leído: ${consumoGlobal} kWh · ${potenciaGlobal} kW · ${gastoActualGlobal.toFixed(2)}€`;
+                manual.style.display = "block";
+            } catch (e) {
+                estado.textContent = "No se pudo leer → usa modo manual";
+                manual.style.display = "block";
             }
-
-            // Guardar email
-            fetch("https://script.google.com/macros/s/AKfycbxVi6XhMv1YpI2qZU97Rao8DhUdg0esgMJr3JdZEU05xhPnhiG_UWRq5LxbyD0QnHYw/exec?email=" + encodeURIComponent(email));
-
-            let html = '<h2 style="grid-column:1/-1; text-align:center; color:#a5f3fc; margin:30px 0;">¡Tus mejores ofertas!</h2>';
-
-            tarifas.forEach(t => {
-                const energia = consumo * t.kwh;
-                const potenciaCoste = (potencia * t.pot_punta * dias) + (potencia * t.pot_valle * dias);
-                const base = energia + potenciaCoste;
-                const impuesto = base * 0.05113;
-                const baseIVA = base + impuesto + alquiler;
-                const iva = baseIVA * 0.21;
-                const totalSinDesc = baseIVA + iva;
-                const totalConDesc = totalSinDesc * (1 - t.descuento / 100);
-                const ahorroAnual = Math.round((gastoActual - totalConDesc) * 12);
-
-                html += `
-                    <div class="tarifa">
-                        <div class="empresa">${t.empresa}</div>
-                        <div style="color:#94a3b8; margin:8px 0;">${t.nombre}</div>
-                        <div class="precio">${totalConDesc.toFixed(0)}€/mes</div>
-                        <div class="ahorro">¡Ahorras ${ahorroAnual}€ al año!</div>
-                        <div style="margin-top:10px; color:#94a3b8; font-size:0.9rem;">-${t.descuento}% primer año</div>
-                    </div>
-                `;
-            });
-
-            document.getElementById("resultado").innerHTML = html;
+        } else {
+            manual.style.display = "block";
+            estado.textContent = "Rellena los datos manualmente";
+            return;
         }
-    </script>
+
+        fetch("https://script.google.com/macros/s/AKfycbxVi6XhMv1YpI2qZU97Rao8DhUdg0esgMJr3JdZEU05xhPnhiG_UWRq5LxbyD0QnHYw/exec?email=" + encodeURIComponent(email));
+        calcularFinal();
+    }
+
+    function calcularManual() {
+        consumoGlobal = parseFloat(document.getElementById("consumo").value) || 350;
+        potenciaGlobal = parseFloat(document.getElementById("potencia").value) || 5.75;
+        gastoActualGlobal = parseFloat(document.getElementById("gasto").value) || 85;
+        calcularFinal();
+    }
+
+    function calcularFinal() {
+        const resultado = document.getElementById("resultado");
+        const dias = 30;
+        let html = '<h2 style="grid-column:1/-1;text-align:center;color:#a5f3fc;margin:30px 0">¡Tus mejores ofertas!</h2>';
+
+        tarifas.forEach(t => {
+            const energia = consumoGlobal * t.kwh;
+            const potenciaCoste = (potenciaGlobal * t.pot_punta * dias) + (potenciaGlobal * t.pot_valle * dias);
+            const base = energia + potenciaCoste;
+            const impuesto = base * 0.05113;
+            const baseIVA = base + impuesto + alquilerGlobal;
+            const iva = baseIVA * 0.21;
+            const totalSinDesc = baseIVA + iva;
+            const totalConDesc = totalSinDesc * (1 - t.descuento / 100);
+            const ahorroAnual = Math.round((gastoActualGlobal - totalConDesc) * 12);
+
+            html += `
+                <div class="tarifa">
+                    <div class="empresa">${t.empresa}</div>
+                    <div style="color:#94a3b8;margin:8px 0">${t.nombre}</div>
+                    <div class="precio">${totalConDesc.toFixed(0)}€/mes</div>
+                    <div class="ahorro">¡Ahorras ${ahorroAnual > 0 ? ahorroAnual : 0}€ al año!</div>
+                    <div style="margin-top:10px;color:#94a3b8;font-size:0.9rem">-${t.descuento}% primer año</div>
+                </div>
+            `;
+        });
+
+        resultado.innerHTML = html;
+        resultado.style.display = "grid";
+    }
+</script>
 </body>
 </html>
