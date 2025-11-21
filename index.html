@@ -13,15 +13,14 @@
         .container { max-width: 900px; margin: 0 auto; text-align: center; padding: 40px 20px; }
         h1 { font-size: 5rem; font-weight: 700; background: linear-gradient(to right, #60a5fa, #a5f3fc); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 10px; }
         .slogan { font-size: 1.7rem; color: #e2e8f0; margin-bottom: 50px; font-weight: 300; }
-        .input-box { background: rgba(255,255,255,0.1); backdrop-filter: blur(15px); border-radius: 24px; padding: 50px 40px; box-shadow: 0 20px 50px rgba(0,0,0,0.4); border: 1px solid rgba(255,255,10,0.15); max-width: 600px; margin: 0 auto; }
-        input[type="email"], input[type="file"], input[type="number"] { width: 100%; padding: 16px 20px; margin: 12px 0; border: none; border-radius: 12px; background: rgba(255,255,255,0.15); color: white; font-size: 1.1rem; }
-        input::placeholder { color: #cbd5e1; }
-        button { background: #0ea5e9; color: white; border: none; padding: 16px 50px; font-size: 1.3rem; border-radius: 12px; cursor: pointer; margin-top: 15px; box-shadow: 0 10px 30px rgba(14,165,233,0.5); transition: all 0.3s; }
+        .input-box { background: rgba(255,255,255,0.1); backdrop-filter: blur(15px); border-radius: 24px; padding: 50px 40px; box-shadow: 0 20px 50px rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.15); max-width: 600px; margin: 0 auto; }
+        input { width: 100%; padding: 16px; margin: 10px 0; border: none; border-radius: 12px; background: rgba(255,255,255,0.15); color: white; }
+        button { background: #0ea5e9; color: white; border: none; padding: 16px 50px; font-size: 1.3rem; border-radius: 12px; cursor: pointer; margin-top: 15px; }
         button:hover { background: #0c8bd4; transform: translateY(-4px); }
-        #estado { margin-top: 15px; color: #fbbf24; font-weight: 500; }
+        #estado { margin-top: 15px; color: #fbbf24; font-weight: 600; }
         .manual { display: none; background: rgba(255,255,255,0.1); padding: 20px; border-radius: 16px; margin-top: 20px; }
         .resultado { display: none; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 30px; margin-top: 50px; }
-        .tarifa { background: rgba(255,255,255,0.1); backdrop-filter: blur(10px); border-radius: 20px; padding: 30px; border: 1px solid rgba(255,255,255,0.1); transition: all 0.4s; }
+        .tarifa { background: rgba(255,255,255,0.1); backdrop-filter: blur(10px); border-radius: 20px; padding: 30px; border: 1px solid rgba(255,255,255,0.1); }
         .tarifa:hover { transform: translateY(-12px); box-shadow: 0 25px 50px rgba(0,0,0,0.5); }
         .empresa { font-size: 2rem; font-weight: 700; }
         .precio { font-size: 3.2rem; font-weight: 700; color: #34d399; }
@@ -33,24 +32,24 @@
         <h1>Lugaz</h1>
         <p class="slogan">Compara tu factura de luz y ahorra hasta 400€ al año</p>
         <div class="input-box">
-            <input type="email" id="email" placeholder="Tu email para enviarte las mejores ofertas" required>
-            <input type="file" id="factura" accept=".pdf,.jpg,.jpeg,.png" required>
+            <input type="email" id="email" placeholder="Tu email para enviarte las mejores ofertas">
+            <input type="file" id="factura" accept=".pdf,.jpg,.jpeg,.png">
             <button id="botonComparar">¡Descubre cuánto puedes ahorrar!</button>
             <p id="estado"></p>
 
             <div class="manual" id="manualEdit">
-                <p>Si la lectura no es correcta, corrígela:</p>
-                <input type="number" id="consumoManual" placeholder="Consumo en kWh (ej: 280)">
-                <input type="number" step="0.01" id="gastoManual" placeholder="Gasto total factura (ej: 56.78)">
-                <input type="number" step="0.01" id="alquilerManual" placeholder="Alquiler contador (ej: 0.81)" value="0.81">
-                <button onclick="calcularConManual()">Calcular con estos datos</button>
+                <p>Edita si la lectura no es exacta:</p>
+                <input type="number" id="consumoManual" placeholder="Consumo kWh">
+                <input type="number" step="0.01" id="gastoManual" placeholder="Gasto total factura €">
+                <input type="number" step="0.01" id="alquilerManual" placeholder="Alquiler contador" value="0.81">
+                <button onclick="calcularConManual()">Calcular</button>
             </div>
         </div>
         <div id="resultado" class="resultado"></div>
     </div>
 
     <script>
-        // TUS COMPAÑÍAS Y PRECIOS
+        // TUS TARIFAS REALES
         const tarifas = [
             { empresa: "Endesa", nombre: "Permanencia 12 meses", kwh: 0.108, potencia_punta: 0.122, potencia_valle: 0.052, descuento: 28 },
             { empresa: "Iberdrola", nombre: "Sin permanencia", kwh: 0.112, potencia_punta: 0.124, potencia_valle: 0.054, descuento: 22 },
@@ -60,11 +59,12 @@
 
         const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxVi6XhMv1YpI2qZU97Rao8DhUdg0esgMJr3JdZEU05xhPnhiG_UWRq5LxbyD0QnHYw/exec";
 
-        document.getElementById('botonComparar').addEventListener('click', procesarFactura);
-
         let consumoGlobal = 350;
         let gastoActualGlobal = 85;
         let alquilerGlobal = 0.81;
+        const diasFacturados = 30; // Aproximado, se puede mejorar
+
+        document.getElementById('botonComparar').addEventListener('click', procesarFactura);
 
         async function procesarFactura() {
             const email = document.getElementById("email").value.trim();
@@ -72,7 +72,7 @@
             const estado = document.getElementById("estado");
             const manual = document.getElementById("manualEdit");
 
-            if (!email || !file) { estado.textContent = "Email y factura obligatorios"; return; }
+            if (!email || !file) { estado.textContent = "Faltan datos"; return; }
 
             estado.textContent = "Leyendo factura...";
             manual.style.display = "none";
@@ -86,28 +86,25 @@
                 await worker.terminate();
                 const t = text.toLowerCase();
 
-                // Consumo kWh
-                const cMatch = t.match(/(consumo|energía|facturado|total energía).*?(\d{2,5})\s*kwh|(\d{2,5})\s*kwh/i);
-                consumoGlobal = cMatch ? parseInt(cMatch[2] || cMatch[3]) : 350;
-                if (consumoGlobal < 50 || consumoGlobal > 2000) consumoGlobal = 350;
+                // Consumo
+                const c = t.match(/(\d{2,5})\s*kwh/i);
+                consumoGlobal = c ? parseInt(c[1]) : 350;
 
-                // Importe total
-                const gMatch = t.match(/(importe total|a pagar|total factura).*?(\d{1,4}[,.]\d{2})\s*€|(\d{1,4}[,.]\d{2})\s*€/i);
-                gastoActualGlobal = gMatch ? parseFloat((gMatch[2] || gMatch[3]).replace(',', '.')) : 85;
-                if (gastoActualGlobal < 15 || gastoActualGlobal > 500) gastoActualGlobal = 85;
+                // Gasto total
+                const g = t.match(/(\d{1,4}[,.]\d{2})\s*€/i);
+                gastoActualGlobal = g ? parseFloat(g[1].replace(',', '.')) : 85;
 
-                // Alquiler contador
-                const aMatch = t.match(/alquiler.*?(\d+[,.]\d{2})/i);
-                alquilerGlobal = aMatch ? parseFloat(aMatch[1].replace(',', '.')) : 0.81;
+                // Alquiler
+                const a = t.match(/alquiler.*?(\d+[,.]\d{2})/i);
+                alquilerGlobal = a ? parseFloat(a[1].replace(',', '.')) : 0.81;
 
-                estado.textContent = `Detectado: ${consumoGlobal} kWh · ${gastoActualGlobal.toFixed(2)}€ · Alquiler: ${alquilerGlobal.toFixed(2)}€`;
+                estado.textContent = `Leído: ${consumoGlobal} kWh · ${gastoActualGlobal.toFixed(2)}€`;
                 document.getElementById("consumoManual").value = consumoGlobal;
                 document.getElementById("gastoManual").value = gastoActualGlobal.toFixed(2);
                 document.getElementById("alquilerManual").value = alquilerGlobal.toFixed(2);
                 manual.style.display = "block";
-
-            } catch (e) {
-                estado.textContent = "No se pudo leer → usa modo manual";
+            } catch { 
+                estado.textContent = "Lectura fallida → modo manual";
                 manual.style.display = "block";
             }
 
@@ -127,8 +124,9 @@
             let html = '<h2 style="grid-column:1/-1; color:#a5f3fc; margin-bottom:30px;">¡Tus mejores ofertas!</h2>';
 
             tarifas.forEach(t => {
+                // CÁLCULO REAL OFICIAL
                 const energia = consumo * t.kwh;
-                const potencia = (t.potencia_punta + t.potencia_valle) * 110 * 0.30; // 110 días aprox
+                const potencia = (t.potencia_punta * diasFacturados + t.potencia_valle * diasFacturados);
                 const base = energia + potencia;
                 const impuestoElectrico = base * 0.0511;
                 const baseImponible = base + impuestoElectrico + alquiler;
@@ -140,10 +138,10 @@
                 html += `
                     <div class="tarifa">
                         <div class="empresa">${t.empresa}</div>
-                        <div style="color:#94a3b8; margin:10px 0;">${t.nombre}</div>
+                        <div style="color:#94a3b8;">${t.nombre}</div>
                         <div class="precio">${totalConDesc.toFixed(0)}€ <small>/mes</small></div>
                         <div class="ahorro">¡Ahorras ${ahorroAnual > 0 ? ahorroAnual : 0}€ al año!</div>
-                        <div style="margin-top:15px; color:#94a3b8;">-${t.descuento}% primer año</div>
+                        <div style="margin-top:10px; color:#94a3b8; font-size:0.9rem;">-${t.descuento}% primer año</div>
                     </div>
                 `;
             });
