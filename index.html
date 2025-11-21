@@ -21,7 +21,6 @@
             color: white;
             min-height: 100vh;
             padding: 20px;
-            background-attachment: fixed;
         }
 
         .container { max-width: 900px; margin: 0 auto; text-align: center; padding: 40px 20px; }
@@ -132,60 +131,23 @@
     </div>
 
     <script>
-        // Tus tarifas hardcodeadas (puedes cambiarlas aquí cuando quieras)
         const tarifas = [
-            {
-                "empresa": "Endesa",
-                "nombre": "One Luz 3 Periodos",
-                "precio_kwh_punta": 0.139,
-                "precio_kwh_llano": 0.109,
-                "precio_kwh_valle": 0.079,
-                "potencia_punta": 0.122,
-                "potencia_valle": 0.052,
-                "descuento_primer_ano": 25
-            },
-            {
-                "empresa": "Iberdrola",
-                "nombre": "Plan Estable Online",
-                "precio_kwh_punta": 0.142,
-                "precio_kwh_llano": 0.112,
-                "precio_kwh_valle": 0.082,
-                "potencia_punta": 0.124,
-                "potencia_valle": 0.054,
-                "descuento_primer_ano": 20
-            },
-            {
-                "empresa": "Naturgy",
-                "nombre": "Tarifa por Uso Nocturna",
-                "precio_kwh_punta": 0.155,
-                "precio_kwh_llano": 0.115,
-                "precio_kwh_valle": 0.069,
-                "potencia_punta": 0.130,
-                "potencia_valle": 0.045,
-                "descuento_primer_ano": 30
-            },
-            {
-                "empresa": "Repsol",
-                "nombre": "Tarifa Online 2.0",
-                "precio_kwh_punta": 0.134,
-                "precio_kwh_llano": 0.104,
-                "precio_kwh_valle": 0.079,
-                "potencia_punta": 0.118,
-                "potencia_valle": 0.050,
-                "descuento_primer_ano": 15
-            }
+            { empresa: "Endesa", nombre: "One Luz 3 Periodos", precio_kwh_punta: 0.139, precio_kwh_llano: 0.109, precio_kwh_valle: 0.079, potencia_punta: 0.122, potencia_valle: 0.052, descuento_primer_ano: 25 },
+            { empresa: "Iberdrola", nombre: "Plan Estable Online", precio_kwh_punta: 0.142, precio_kwh_llano: 0.112, precio_kwh_valle: 0.082, potencia_punta: 0.124, potencia_valle: 0.054, descuento_primer_ano: 20 },
+            { empresa: "Naturgy", nombre: "Tarifa por Uso Nocturna", precio_kwh_punta: 0.155, precio_kwh_llano: 0.115, precio_kwh_valle: 0.069, potencia_punta: 0.130, potencia_valle: 0.045, descuento_primer_ano: 30 },
+            { empresa: "Repsol", nombre: "Tarifa Online 2.0", precio_kwh_punta: 0.134, precio_kwh_llano: 0.104, precio_kwh_valle: 0.079, potencia_punta: 0.118, potencia_valle: 0.050, descuento_primer_ano: 15 }
         ];
 
         const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxVi6XhMv1YpI2qZU97Rao8DhUdg0esgMJr3JdZEU05xhPnhiG_UWRq5LxbyD0QnHYw/exec";
 
-        // Conectar el botón
-        document.getElementById('botonComparar').addEventListener('click', procesarFactura);
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('botonComparar').addEventListener('click', procesarFactura);
+        });
 
         async function procesarFactura() {
             const email = document.getElementById("email").value;
             const file = document.getElementById("factura").files[0];
             const estado = document.getElementById("estado");
-            const resultado = document.getElementById("resultado");
 
             if (!email || !file) {
                 estado.textContent = "⚠️ Por favor, pon tu email y sube la factura";
@@ -194,24 +156,23 @@
 
             estado.textContent = "Procesando tu factura...";
 
-            // Guardar email
-            try {
-                await fetch(GOOGLE_SCRIPT_URL, {
-                    method: 'POST',
-                    mode: 'no-cors',
-                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                    body: 'email=' + encodeURIComponent(email)
-                });
-            } catch (e) {
-                console.log('Email guardado (o no, pero seguimos)');
-            }
+            // Guardar email (con no-cors para evitar errores)
+            fetch(GOOGLE_SCRIPT_URL, {
+                method: 'POST',
+                mode: 'no-cors',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: 'email=' + encodeURIComponent(email)
+            }).then(() => {
+                console.log('Email guardado');
+            }).catch(() => {
+                console.log('Error guardando email, pero seguimos');
+            });
 
-            // Simular lectura de factura (sin OCR por ahora, valores reales)
-            const consumoTotal = 350; // kWh
-            const gastoActual = 85; // €
-
+            // Simular procesamiento
             setTimeout(() => {
-                estado.textContent = "¡Calculado! Estas son tus ofertas:";
+                const consumoTotal = 350;
+                const gastoActual = 85;
+                estado.textContent = "¡Calculado! Mira tus ofertas:";
                 mostrarResultados(consumoTotal, gastoActual);
             }, 1500);
         }
@@ -223,7 +184,7 @@
             tarifas.forEach(t => {
                 const precioMedio = (t.precio_kwh_punta + t.precio_kwh_llano + t.precio_kwh_valle) / 3;
                 const costeEnergia = consumo * precioMedio;
-                const costePotencia = (t.potencia_punta * 100 + t.potencia_valle * 100) * 0.3; // Estimado
+                const costePotencia = (t.potencia_punta + t.potencia_valle) * 100 * 0.3;
                 let costeMes = (costeEnergia + costePotencia + 10);
                 let costeConDesc = costeMes * (1 - t.descuento_primer_ano / 100);
                 let ahorroAnual = Math.round((gastoActual - costeConDesc) * 12);
@@ -232,7 +193,7 @@
                     <div class="tarifa">
                         <div class="empresa">${t.empresa}</div>
                         <div style="color:#94a3b8; margin:10px 0;">${t.nombre}</div>
-                        <div class="precio">${costeConDesc.toFixed(0)}€ <small>/mes</small></div>
+                        <div class="precio">${Math.round(costeConDesc)}€ <small>/mes</small></div>
                         <div class="ahorro">¡Ahorras ${ahorroAnual > 0 ? ahorroAnual : 0}€ al año!</div>
                         <div style="margin-top:15px; color:#94a3b8;">-${t.descuento_primer_ano}% primer año</div>
                     </div>
