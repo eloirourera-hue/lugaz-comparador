@@ -7,6 +7,9 @@
     <link rel="stylesheet" href="style.css">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 </head>
+<script>
+  document.getElementById("botonProcesar").addEventListener("click", procesarFactura);
+</script>
 <body>
 
 <div class="container">
@@ -16,7 +19,7 @@
     <div class="input-box">
         <input type="email" id="email" placeholder="Tu email para enviarte las mejores ofertas" required>
         <input type="file" id="factura" accept=".pdf,.jpg,.jpeg,.png" required>
-        <button onclick="procesarFactura()">¡Descubre cuánto puedes ahorrar!</button>
+        <button id="botonProcesar" type="button">¡Descubre cuánto puedes ahorrar!</button>
         <p id="estado" style="margin-top:15px; color:#fbbf24;"></p>
     </div>
 
@@ -26,4 +29,5 @@
 <script>
   const { createWorker } = Tesseract;
 </script>
+
 
