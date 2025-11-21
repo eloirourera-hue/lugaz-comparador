@@ -41,11 +41,12 @@
     </div>
 
     <script>
-           const tarifas = [
-            { empresa: "Endesa", nombre: "Permanencia 12 meses", precio_kwh_punta: 0.108, precio_kwh_llano: 0.108, precio_kwh_valle: 0.108, potencia_punta: 0.122, potencia_valle: 0.052, },
-            { empresa: "Iberdrola", nombre: "Sin permanencia", precio_kwh_punta: 0.142, precio_kwh_llano: 0.112, precio_kwh_valle: 0.082, potencia_punta: 0.124, potencia_valle: 0.054, },
-            { empresa: "Eleia", nombre: "Permanencia 12 meses", precio_kwh_punta: 0.115, precio_kwh_llano: 0.115, precio_kwh_valle: 0.115, potencia_punta: 0.130, potencia_valle: 0.045, },
-            { empresa: "Plenitude", nombre: "Sin permanencia", precio_kwh_punta: 0.134, precio_kwh_llano: 0.104, precio_kwh_valle: 0.079, potencia_punta: 0.118, potencia_valle: 0.050, }
+        // TUS COMPAÑÍAS Y PRECIOS EXACTOS (con descuentos realistas)
+        const tarifas = [
+            { empresa: "Endesa", nombre: "Permanencia 12 meses", precio_kwh_punta: 0.108, precio_kwh_llano: 0.108, precio_kwh_valle: 0.108, potencia_punta: 0.122, potencia_valle: 0.052, descuento_primer_ano: 28 },
+            { empresa: "Iberdrola", nombre: "Sin permanencia", precio_kwh_punta: 0.142, precio_kwh_llano: 0.112, precio_kwh_valle: 0.082, potencia_punta: 0.124, potencia_valle: 0.054, descuento_primer_ano: 22 },
+            { empresa: "Eleia", nombre: "Permanencia 12 meses", precio_kwh_punta: 0.115, precio_kwh_llano: 0.115, precio_kwh_valle: 0.115, potencia_punta: 0.130, potencia_valle: 0.045, descuento_primer_ano: 35 },
+            { empresa: "Plenitude", nombre: "Sin permanencia", precio_kwh_punta: 0.134, precio_kwh_llano: 0.104, precio_kwh_valle: 0.079, potencia_punta: 0.118, potencia_valle: 0.050, descuento_primer_ano: 20 }
         ];
 
         const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxVi6XhMv1YpI2qZU97Rao8DhUdg0esgMJr3JdZEU05xhPnhiG_UWRq5LxbyD0QnHYw/exec";
@@ -53,43 +54,48 @@
         document.getElementById('botonComparar').addEventListener('click', procesarFactura);
 
         async function procesarFactura() {
-            const email = document.getElementById("email").value;
+            const email = document.getElementById("email").value.trim();
             const file = document.getElementById("factura").files[0];
             const estado = document.getElementById("estado");
 
-            if (!email || !file) { estado.textContent = "⚠️ Email y factura obligatorios"; return; }
+            if (!email || !file) {
+                estado.textContent = "Email y factura obligatorios";
+                return;
+            }
 
             estado.textContent = "Leyendo tu factura...";
-            let consumo = 350, gastoActual = 85;
+            let consumo = 350;
+            let gastoActual = 85;
 
-            // OCR REAL (lee cualquier factura de Endesa, Iberdrola, Naturgy, etc.)
             try {
                 const worker = Tesseract.createWorker();
                 await worker.load();
                 await worker.loadLanguage('spa');
                 await worker.initialize('spa');
-                const result = await worker.recognize(file);
+                const { data: { text } } = await worker.recognize(file);
                 await worker.terminate();
-                const text = result.data.text.toLowerCase();
 
-                // Extraer consumo (busca kWh totales consumidos)
-                const consumoMatch = text.match(/consumo.*?(\d{3,5})\s*kwh|total.*?(\d{3,5})\s*kwh|facturado.*?(\d{3,5})\s*kwh|(\d{3,5})\s*kwh/i);
-                if (consumoMatch) consumo = parseInt(consumoMatch.find(m => m)) || 350;
+                const texto = text.toLowerCase();
 
-                // Extraer gasto actual (busca importe total, a pagar, etc.)
-                const gastoMatch = text.match(/importe total.*?(\d+[\.,]\d{2})\s*€|a pagar.*?(\d+[\.,]\d{2})\s*€|total factura.*?(\d+[\.,]\d{2})\s*€|(\d+[\.,]\d{2})\s*€/i);
-                if (gastoMatch) gastoActual = parseFloat((gastoMatch.find(m => m) || "85").replace(',', '.')) || 85;
+                // Consumo en kWh
+                const consumoMatch = texto.match(/consumo.*?(\d{3,5})\s*kwh|facturado.*?(\d{3,5})\s*kwh|total.*?(\d{3,5})\s*kwh|(\d{3,5})\s*kwh/i);
+                if (consumoMatch) consumo = parseInt(consumoMatch[1] || consumoMatch[2] || consumoMatch[3] || consumoMatch[4]) || 350;
 
-                estado.textContent = `Detectado: ${consumo} kWh y ${gastoActual.toFixed(0)}€/mes`;
+                // Importe total
+                const gastoMatch = texto.match(/importe total.*?(\d+[\.,]\d{2})|a pagar.*?(\d+[\.,]\d{2})|total factura.*?(\d+[\.,]\d{2})|(\d+[\.,]\d{2})\s*€/i);
+                if (gastoMatch) gastoActual = parseFloat((gastoMatch[1] || gastoMatch[2] || gastoMatch[3] || gastoMatch[4] || "85").replace(',', '.'));
+
+                estado.textContent = `Detectado: ${consumo} kWh · ${gastoActual.toFixed(0)}€/mes`;
             } catch (e) {
-                estado.textContent = "Factura leída (modo estimado)";
+                estado.textContent = "Usando estimación (350 kWh · 85€)";
             }
 
-            // Guardar email en Google Sheets
-            fetch(GOOGLE_SCRIPT_URL + "?email=" + encodeURIComponent(email));
+            // Guardar email
+            fetch(GOOGLE_SCRIPT_URL + "?email=" + encodeURIComponent(email))
+                .catch(() => console.log("Email guardado o no, seguimos"));
 
-            // Mostrar resultados personalizados
-            set esserciTimeout(() => mostrarResultados(consumo, gastoActual), 800);
+            // Mostrar resultados
+            setTimeout(() => mostrarResultados(consumo, gastoActual), 1000);
         }
 
         function mostrarResultados(consumo, gastoActual) {
@@ -97,18 +103,18 @@
             let html = '<h2 style="grid-column:1/-1; color:#a5f3fc; margin-bottom:30px;">¡Tus mejores ofertas!</h2>';
 
             tarifas.forEach(t => {
-                const precioMedio = (t.precio_kwh_punta + t.precio_kwh_llano + t.precio_kwh_valle) / 3;
-                const costeEnergia = consumo * precioMedio;
-                const costePotencia = (t.potencia_punta + t.potencia_valle) * 100 * 0.3;
-                let costeMes = (costeEnergia + costePotencia + 12);
-                let costeConDesc = costeMes * (1 - t.descuento_primer_ano / 100);
-                let ahorroAnual = Math.round((gastoActual - costeConDesc) * 12);
+                const precioMedioKwh = (t.precio_kwh_punta + t.precio_kwh_llano + t.precio_kwh_valle) / 3;
+                const costeEnergia = consumo * precioMedioKwh;
+                const costePotencia = (t.potencia_punta + t.potencia_valle) * 110 * 0.30; // más realista
+                const costeTotal = costeEnergia + costePotencia + 15;
+                const precioConDescuento = costeTotal * (1 - t.descuento_primer_ano / 100);
+                const ahorroAnual = Math.round((gastoActual - precioConDescuento) * 12);
 
                 html += `
                     <div class="tarifa">
                         <div class="empresa">${t.empresa}</div>
                         <div style="color:#94a3b8; margin:10px 0;">${t.nombre}</div>
-                        <div class="precio">${Math.round(costeConDesc)}€ <small>/mes</small></div>
+                        <div class="precio">${Math.round(precioConDescuento)}€ <small>/mes</small></div>
                         <div class="ahorro">¡Ahorras ${ahorroAnual > 0 ? ahorroAnual : 0}€ al año!</div>
                         <div style="margin-top:15px; color:#94a3b8;">-${t.descuento_primer_ano}% primer año</div>
                     </div>
