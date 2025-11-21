@@ -1,71 +1,29 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>LUGAZ SL - Comparador de Luz</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      padding: 20px;
-      max-width: 900px;
-      margin: auto;
-    }
-    .hidden {
-      display: none;
-    }
-    .card {
-      border: 1px solid #ccc;
-      padding: 15px;
-      margin-top: 15px;
-      border-radius: 10px;
-    }
-    button {
-      padding: 10px 20px;
-      cursor: pointer;
-      background: #1e90ff;
-      border: none;
-      color: white;
-      border-radius: 6px;
-      font-size: 16px;
-    }
-    input, label {
-      font-size: 16px;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lugaz - Comparador de Luz</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
 
-  <h1>LUGAZ SL</h1>
-  <h3>Compara tu mismo tu ahorro, sin llamadas comerciales</h3>
+<div class="container">
+    <h1>Lugaz</h1>
+    <p class="slogan">Compara tu factura de luz y ahorra hasta 400€ al año</p>
 
-  <!-- Pantalla 1 -->
-  <div id="start-screen" class="card">
-    <button onclick="showStep(2)">Ver comparativas</button>
-  </div>
+    <div class="input-box">
+        <input type="email" id="email" placeholder="Tu email para enviarte las mejores ofertas" required>
+        <input type="file" id="factura" accept=".pdf,.jpg,.jpeg,.png" required>
+        <button onclick="procesarFactura()">¡Descubre cuánto puedes ahorrar!</button>
+        <p id="estado" style="margin-top:15px; color:#fbbf24;"></p>
+    </div>
 
-  <!-- Pantalla 2 -->
-  <div id="email-screen" class="card hidden">
-    <label for="email">Introduce tu email para continuar:</label><br><br>
-    <input type="email" id="email" placeholder="tu@email.com" />
-    <br><br>
-    <button onclick="saveEmail()">Continuar</button>
-  </div>
+    <div id="resultado" class="resultado" style="display:none; margin-top:60px;"></div>
+</div>
 
-  <!-- Pantalla 3 -->
-  <div id="upload-screen" class="card hidden">
-    <p>Sube tu factura 2.0TD (PDF):</p>
-    <input type="file" id="factura" accept=".pdf" />
-    <br><br>
-    <button onclick="fakeReadFactura()">Leer factura</button>
-  </div>
-
-  <!-- Pantalla 4 -->
-  <div id="results-screen" class="card hidden">
-    <h3>Comparativas</h3>
-    <div id="results-output">Cargando...</div>
-  </div>
-
-  <script src="app.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5"></script>
+<script src="script.js"></script>
 </body>
 </html>
