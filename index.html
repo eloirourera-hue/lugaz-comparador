@@ -7,7 +7,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/tesseract.js@4.1.1/dist/tesseract.min.js"></script>
     <style>
-        /* Estilos CSS (integrados para facilitar el copiar y pegar) */
+        /* Estilos CSS (integrados) */
         body{margin:0;font-family:'Poppins',sans-serif;background:linear-gradient(135deg,#0f172a,#1e40af,#0ea5e9);color:#fff;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;background-attachment: fixed;}
         .card{background:rgba(255,255,255,0.1);backdrop-filter:blur(15px);border-radius:24px;padding:40px;max-width:500px;width:100%;box-shadow:0 20px 50px rgba(0,0,0,0.4);border: 1px solid rgba(255,255,255,0.15);}
         h1{font-size:3.5rem;text-align:center;background:linear-gradient(to right,#60a5fa,#a5f3fc);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
@@ -17,6 +17,7 @@
         button{background:#0ea5e9;color:#fff;cursor:pointer;font-size:1.3rem;box-shadow: 0 10px 30px rgba(14,165,233,0.5);}
         button:hover{background:#0c8bd4;transform: translateY(-2px);}
         #estado{margin-top:15px;color:#fbbf24;font-weight:600;text-align:center}
+        /* MODO MANUAL: Se muestra solo al fallar la lectura */
         .manual{display:none;background:rgba(255,255,255,0.1);padding:20px;border-radius:16px;margin-top:20px}
         .resultado{display:none;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:25px;margin-top:40px}
         .tarifa{background:rgba(255,255,255,0.1);padding:25px;border-radius:16px;text-align:center;transition:0.3s;border: 1px solid rgba(255,255,255,0.1);}
@@ -37,15 +38,15 @@
     <input type="file" id="factura" accept=".pdf,.jpg,.jpeg,.png">
     <button onclick="procesar()">¡Calcular ahorro!</button>
     
-    <div id="estado">Sube tu factura o usa modo manual ↓</div>
+    <div id="estado">Sube tu factura para comenzar</div>
     <div id="datos-extraidos" style="display: none;"></div>
 
     <div class="manual" id="manual">
-        <p>Modo manual (si la factura no se lee bien):</p>
+        <p>⚠️ No se pudo leer la factura. Rellena los datos:</p>
         <input type="number" id="consumo" placeholder="Consumo kWh/mes (ej: 320)" required>
         <input type="number" step="0.01" id="potencia" placeholder="Potencia contratada kW (ej: 5.75)" value="5.75" required>
         <input type="number" step="0.01" id="gasto" placeholder="Gasto actual €/mes (ej: 78.45)" required>
-        <button onclick="calcularManual()">Calcular Manual</button>
+        <button onclick="calcularManual()">Calcular Manualmente</button>
     </div>
 
     <div id="resultado" class="resultado"></div>
@@ -56,10 +57,9 @@
     const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzn_u0C3nALD6Nepy5cBKmygioyvyMHp83AyWCwdC6Ta4lc-yccXnnb6f-MfoJBnAxIKQ/exec";
 
     // -----------------------------------------------------------------------------
-    // DATOS DE TARIFAS (corregidos y basados en tu tarifas.json)
+    // DATOS DE TARIFAS
     // -----------------------------------------------------------------------------
     const tarifas = [
-        // He usado una nomenclatura corta (kwh_p/l/v, pot_p/v) para simplificar la fórmula.
         { empresa: "Endesa", nombre: "One Luz 3 Periodos", kwh_p: 0.139, kwh_l: 0.109, kwh_v: 0.079, pot_p: 0.122, pot_v: 0.052, descuento: 25 },
         { empresa: "Iberdrola", nombre: "Plan Estable Online", kwh_p: 0.142, kwh_l: 0.112, kwh_v: 0.082, pot_p: 0.124, pot_v: 0.054, descuento: 20 },
         { empresa: "Naturgy", nombre: "Tarifa por Uso Nocturna", kwh_p: 0.155, kwh_l: 0.115, kwh_v: 0.069, pot_p: 0.130, pot_v: 0.045, descuento: 30 },
@@ -67,33 +67,35 @@
     ];
     // -----------------------------------------------------------------------------
 
-    // Variables globales (valores por defecto)
-    let consumoGlobal = 350; // kWh/mes
-    let potenciaGlobal = 5.75; // kW
-    let gastoActualGlobal = 85.00; // €/mes
+    // Variables globales
+    let consumoGlobal = null; // null si no se ha extraído o introducido
+    let potenciaGlobal = null; 
+    let gastoActualGlobal = null; 
     const alquilerGlobal = 0.0267; // Precio alquiler contador (€/día)
 
-    // --- FUNCIÓN DE EXTRACCIÓN MEJORADA (Usando Tesseract) ---
+
+    // --- FUNCIÓN DE EXTRACCIÓN REFORZADA ---
     function extraerDatos(texto) {
-        // Limpiamos el texto: a minúsculas, reemplazamos comas por puntos, eliminamos caracteres no numéricos relevantes.
-        const t = texto.toLowerCase().replace(/[^0-9.,\s€kw]/g, ' ').replace(/,/g, '.');
-        let consumo = consumoGlobal;
-        let potencia = potenciaGlobal;
-        let gasto = gastoActualGlobal;
+        // Normalización: 1. A minúsculas. 2. Reemplazar comas por puntos. 3. Eliminar saltos de línea.
+        const t = texto.toLowerCase().replace(/,/g, '.').replace(/\n/g, ' ');
+        let datos = { consumo: null, potencia: null, gasto: null };
         
-        // 1. Consumo Mensual (Busca números seguidos de kWh/mes, cerca de "consumo")
-        const c = t.match(/consumo.*?\s*(\d{3,6})\s*kwh/i) || t.match(/(\d{3,6})\s*kwh/i);
-        if (c) consumo = parseFloat(c[1]);
-
-        // 2. Potencia contratada (Busca números con o sin decimales cerca de "potencia contratada" o "kw")
+        // --- Búsqueda de Consumo (kWh/mes) ---
+        // Patrón reforzado: busca números (3 a 6 dígitos) antes de 'kwh' o 'consumo'
+        const c = t.match(/consumo.*?\s*(\d+[\.]?\d*)\s*kwh/i) || t.match(/(\d+[\.]?\d*)\s*kwh/i);
+        if (c) datos.consumo = parseFloat(c[1]);
+        
+        // --- Búsqueda de Potencia Contratada (kW) ---
+        // Patrón reforzado: busca números con o sin decimales cerca de 'potencia' y 'kw'
         const p = t.match(/potencia\s*contratada.*?\s*(\d+[\.]?\d*)\s*kw/i) || t.match(/(\d+[\.]?\d*)\s*kw/i);
-        if (p) potencia = parseFloat(p[1]);
+        if (p) datos.potencia = parseFloat(p[1]);
 
-        // 3. Gasto total (Busca "total" o "importe" seguido de números con decimales y €)
-        const g = t.match(/(?:total|importe).*?(\d{2,4}\.\d{2})\s*€/i);
-        if (g) gasto = parseFloat(g[1]);
+        // --- Búsqueda de Gasto Total (€/mes) ---
+        // Patrón reforzado: busca 'total' o 'importe' seguido de un número con decimales y '€'
+        const g = t.match(/(?:total|importe|pagar).*?(\d{2,4}\.\d{2})\s*€/i);
+        if (g) datos.gasto = parseFloat(g[1]);
         
-        return { consumo: consumo, potencia: potencia, gasto: gasto };
+        return datos;
     }
 
     // --- FUNCIÓN PRINCIPAL DE PROCESAMIENTO ---
@@ -103,39 +105,53 @@
         const estado = document.getElementById("estado");
         const manual = document.getElementById("manual");
         const datosExtraidos = document.getElementById("datos-extraidos");
+        const resultadoDiv = document.getElementById("resultado");
+
+        resultadoDiv.style.display = "none"; // Ocultar resultados previos
 
         if (!email) { estado.textContent = "⚠️ Por favor, introduce tu email"; return; }
         
-        // Si no hay archivo, mostramos el modo manual y salimos de la función
-        if (!file) {
-             manual.style.display = "block"; 
-             estado.textContent = "Sube la factura o rellena manualmente"; 
-             return; 
-        }
-
-        estado.textContent = "Leyendo factura... (Esto puede tardar unos segundos)";
-        datosExtraidos.style.display = "none";
-        
-        try {
-            const { data: { text } } = await Tesseract.recognize(file, 'spa', { logger: m => m });
+        if (file) {
+            estado.textContent = "Leyendo factura... (Esto puede tardar unos segundos)";
+            datosExtraidos.style.display = "none";
+            manual.style.display = "none"; // Ocultar manual mientras lee
             
-            const datos = extraerDatos(text);
-            consumoGlobal = datos.consumo;
-            potenciaGlobal = datos.potencia;
-            gastoActualGlobal = datos.gasto;
+            try {
+                const { data: { text } } = await Tesseract.recognize(file, 'spa', { logger: m => m });
+                
+                const datos = extraerDatos(text);
+                consumoGlobal = datos.consumo;
+                potenciaGlobal = datos.potencia;
+                gastoActualGlobal = datos.gasto;
+                
+                // --- VERIFICACIÓN DE DATOS EXTRAÍDOS ---
+                const datosValidos = consumoGlobal && potenciaGlobal && gastoActualGlobal;
 
-            estado.textContent = "✅ Lectura completada. Datos extraídos:";
-            datosExtraidos.innerHTML = `Consumo: <strong>${consumoGlobal.toFixed(0)} kWh/mes</strong> · Potencia: <strong>${potenciaGlobal.toFixed(2)} kW</strong> · Gasto: <strong>${gastoActualGlobal.toFixed(2)} €/mes</strong>`;
-            datosExtraidos.style.display = "block";
-            manual.style.display = "block"; 
+                if (datosValidos) {
+                    estado.textContent = "✅ Lectura completada y datos válidos:";
+                    datosExtraidos.innerHTML = `Consumo: <strong>${consumoGlobal.toFixed(0)} kWh/mes</strong> · Potencia: <strong>${potenciaGlobal.toFixed(2)} kW</strong> · Gasto: <strong>${gastoActualGlobal.toFixed(2)} €/mes</strong>`;
+                    datosExtraidos.style.display = "block";
+                    calcularFinal(); // Ejecutar cálculo SOLO si la extracción fue exitosa
+                } else {
+                    // Si falla la extracción, forzamos el modo manual
+                    estado.textContent = "⚠️ Lectura parcial. Rellena los campos faltantes:";
+                    // Autocompletar con lo que sí se encontró
+                    document.getElementById("consumo").value = consumoGlobal || '';
+                    document.getElementById("potencia").value = potenciaGlobal || '5.75';
+                    document.getElementById("gasto").value = gastoActualGlobal || '';
+                    manual.style.display = "block";
+                }
 
-        } catch (e) {
-            estado.textContent = "❌ No se pudo leer la factura → usa modo manual";
+            } catch (e) {
+                // Si falla Tesseract (ej. PDF corrupto o error de red), forzamos manual
+                estado.textContent = "❌ Error en la lectura del archivo. Usa el modo manual.";
+                manual.style.display = "block";
+            }
+        } else {
+            // Si el usuario presiona sin subir archivo, mostramos el modo manual para que actúe
+            estado.textContent = "Sube la factura o usa el modo manual de abajo.";
             manual.style.display = "block";
         }
-        
-        // Ejecutar el cálculo y el guardado de email
-        calcularFinal();
     }
 
     // --- FUNCIÓN PARA MODO MANUAL ---
@@ -144,8 +160,9 @@
         const potenciaInput = document.getElementById("potencia").value;
         const gastoInput = document.getElementById("gasto").value;
 
+        // CRÍTICO: Verificar que todos los campos manuales están rellenos
         if (!consumoInput || !potenciaInput || !gastoInput) {
-            document.getElementById("estado").textContent = "⚠️ Rellena todos los campos manuales.";
+            document.getElementById("estado").textContent = "⚠️ Rellena TODOS los campos manuales para calcular.";
             return;
         }
 
@@ -155,16 +172,29 @@
         
         document.getElementById("estado").textContent = "Cálculo manual iniciado.";
         document.getElementById("datos-extraidos").style.display = "none";
-        calcularFinal();
+        
+        // Ejecutar cálculo SOLAMENTE si los datos son numéricos válidos
+        if (consumoGlobal && potenciaGlobal && gastoActualGlobal) {
+            calcularFinal();
+        } else {
+            document.getElementById("estado").textContent = "⚠️ Asegúrate de que los datos introducidos son números válidos.";
+        }
     }
 
-    // --- FUNCIÓN DE CÁLCULO REALISTA (Para España) ---
+    // --- FUNCIÓN DE CÁLCULO REALISTA (Fallo Crítico Arreglado: Solo se ejecuta con datos) ---
     function calcularFinal() {
         const resultado = document.getElementById("resultado");
         const email = document.getElementById("email").value.trim();
         const dias = 30; 
         
-        // Distribución de Consumo Típica (2.0TD) - Aproximación estándar
+        // CRÍTICO: Si llegamos aquí y no tenemos datos válidos, no hacemos nada.
+        if (!consumoGlobal || !potenciaGlobal || !gastoActualGlobal) {
+            resultado.style.display = "none";
+            document.getElementById("estado").textContent = "⚠️ Faltan datos clave (Consumo, Potencia o Gasto) para calcular.";
+            return;
+        }
+
+        // Distribución de Consumo Típica (2.0TD)
         const factor_valle = 0.45;
         const factor_llano = 0.29;
         const factor_punta = 0.26;
@@ -186,7 +216,7 @@
             // 3. Alquiler del Contador (Precio regulado)
             const coste_alquiler = potenciaGlobal * alquilerGlobal * dias;
 
-            // 4. Base Imponible (Energía + Potencia + Alquiler)
+            // 4. Base Imponible
             const base = coste_energia_total + coste_potencia_total + coste_alquiler;
 
             // 5. Impuestos: Eléctrico (IE) e IVA
