@@ -24,7 +24,12 @@ async function procesarFactura() {
     await fetch(GOOGLE_SCRIPT_URL + "?email=" + encodeURIComponent(email));
 
     // Leer texto de la factura (PDF o imagen)
-    const { data: { text } } = await Tesseract.recognize(file, 'spa');
+   const worker = createWorker();
+await worker.load();
+await worker.loadLanguage('spa');
+await worker.initialize('spa');
+const { data: { text } } = await worker.recognize(file);
+await worker.terminate();
 
     // Extraer consumo aproximado (busca palabras clave)
     const consumoTotal = extraerConsumo(text);
@@ -74,3 +79,4 @@ function mostrarResultados(consumo, gastoActual, email) {
         `;
     });
 }
+
