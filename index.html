@@ -7,18 +7,18 @@
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/tesseract.js@4.1.1/dist/tesseract.min.js"></script>
     <style>
-        :root { --gradiente: linear-gradient(135deg, #0f172a 0%, #1e40af 50%, #0ea5e9 100%); }
+        :root { --grad: linear-gradient(135deg, #0f172a 0%, #1e40af 50%, #0ea5e9 100%); }
         * { margin:0; padding:0; box-sizing:border-box; }
-        body { font-family: 'Poppins', sans-serif; background: var(--gradiente); color: white; min-height: 100vh; padding: 20px; }
+        body { font-family: 'Poppins', sans-serif; background: var(--grad); color: white; min-height: 100vh; padding: 20px; }
         .container { max-width: 900px; margin: 0 auto; text-align: center; padding: 40px 20px; }
-        h1 { font-size: 5rem; font-weight: 700; background: linear-gradient(to right, #60a5fa, #a5f3fc); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 10px; }
-        .slogan { font-size: 1.7rem; color: #e2e8f0; margin-bottom: 50px; font-weight: 300; }
-        .input-box { background: rgba(255,255,255,0.1); backdrop-filter: blur(15px); border-radius: 24px; padding: 50px 40px; box-shadow: 0 20px 50px rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.15); max-width: 600px; margin: 0 auto; }
-        input { width: 100%; padding: 16px; margin: 10px 0; border: none; border-radius: 12px; background: rgba(255,255,255,0.15); color: white; }
-        button { background: #0ea5e9; color: white; border: none; padding: 16px 50px; font-size: 1.3rem; border-radius: 12px; cursor: pointer; margin-top: 15px; }
-        button:hover { background: #0c8bd4; transform: translateY(-4px); }
+        h1 { font-size: 5rem; font-weight: 700; background: linear-gradient(to right, #60a5fa, #a5f3fc); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .slogan { font-size: 1.7rem; color: #e2e8f0; margin-bottom: 50px; }
+        .input-box { background: rgba(255,255,255,0.1); backdrop-filter: blur(15px); border-radius: 24px; padding: 50px 40px; box-shadow: 0 20px 50px rgba(0,0,0,0.4); max-width: 600px; margin: 0 auto; }
+        input, button { width: 100%; padding: 18px; margin: 15px 0; border: none; border-radius: 14px; font-size: 1.1rem; }
+        input { background: rgba(255,255,255,0.15); color: white; }
+        button { background: #0ea5e9; color: white; cursor: pointer; font-size: 1.3rem; }
+        button:hover { background: #0c8bd4; }
         #estado { margin-top: 15px; color: #fbbf24; font-weight: 600; }
-        .manual { display: none; background: rgba(255,255,255,0.1); padding: 20px; border-radius: 16px; margin-top: 20px; }
         .resultado { display: none; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 30px; margin-top: 50px; }
         .tarifa { background: rgba(255,255,255,0.1); backdrop-filter: blur(10px); border-radius: 20px; padding: 30px; border: 1px solid rgba(255,255,255,0.1); }
         .tarifa:hover { transform: translateY(-12px); box-shadow: 0 25px 50px rgba(0,0,0,0.5); }
@@ -36,33 +36,19 @@
             <input type="file" id="factura" accept=".pdf,.jpg,.jpeg,.png">
             <button id="botonComparar">¡Descubre cuánto puedes ahorrar!</button>
             <p id="estado"></p>
-
-            <div class="manual" id="manualEdit">
-                <p>Edita si la lectura no es exacta:</p>
-                <input type="number" id="consumoManual" placeholder="Consumo kWh">
-                <input type="number" step="0.01" id="gastoManual" placeholder="Gasto total factura €">
-                <input type="number" step="0.01" id="alquilerManual" placeholder="Alquiler contador" value="0.81">
-                <button onclick="calcularConManual()">Calcular</button>
-            </div>
         </div>
         <div id="resultado" class="resultado"></div>
     </div>
 
     <script>
-        // TUS TARIFAS REALES
         const tarifas = [
-            { empresa: "Endesa", nombre: "Permanencia 12 meses", kwh: 0.108, potencia_punta: 0.122, potencia_valle: 0.052, descuento: 28 },
-            { empresa: "Iberdrola", nombre: "Sin permanencia", kwh: 0.112, potencia_punta: 0.124, potencia_valle: 0.054, descuento: 22 },
-            { empresa: "Eleia", nombre: "Permanencia 12 meses", kwh: 0.115, potencia_punta: 0.130, potencia_valle: 0.045, descuento: 35 },
-            { empresa: "Plenitude", nombre: "Sin permanencia", kwh: 0.104, potencia_punta: 0.118, potencia_valle: 0.050, descuento: 20 }
+            { empresa: "Endesa", nombre: "Permanencia 12 meses", kwh: 0.108, pot_punta: 0.122, pot_valle: 0.052, descuento: 28 },
+            { empresa: "Iberdrola", nombre: "Sin permanencia", kwh: 0.112, pot_punta: 0.124, pot_valle: 0.054, descuento: 22 },
+            { empresa: "Eleia", nombre: "Permanencia 12 meses", kwh: 0.115, pot_punta: 0.130, pot_valle: 0.045, descuento: 35 },
+            { empresa: "Plenitude", nombre: "Sin permanencia", kwh: 0.104, pot_punta: 0.118, pot_valle: 0.050, descuento: 20 }
         ];
 
         const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxVi6XhMv1YpI2qZU97Rao8DhUdg0esgMJr3JdZEU05xhPnhiG_UWRq5LxbyD0QnHYw/exec";
-
-        let consumoGlobal = 350;
-        let gastoActualGlobal = 85;
-        let alquilerGlobal = 0.81;
-        const diasFacturados = 30; // Aproximado, se puede mejorar
 
         document.getElementById('botonComparar').addEventListener('click', procesarFactura);
 
@@ -70,68 +56,65 @@
             const email = document.getElementById("email").value.trim();
             const file = document.getElementById("factura").files[0];
             const estado = document.getElementById("estado");
-            const manual = document.getElementById("manualEdit");
 
             if (!email || !file) { estado.textContent = "Faltan datos"; return; }
 
-            estado.textContent = "Leyendo factura...";
-            manual.style.display = "none";
+            estado.textContent = "Leyendo tu factura...";
+
+            let consumo = 350;
+            let potencia = 5.75; // kW por defecto
+            let alquiler = 0.81;
+            let gastoActual = 85;
 
             try {
-                const worker = Tesseract.createWorker();
+                const worker = Tesseract.createWorker({ logger: m => console.log(m) });
                 await worker.load();
                 await worker.loadLanguage('spa');
                 await worker.initialize('spa');
                 const { data: { text } } = await worker.recognize(file);
                 await worker.terminate();
-                const t = text.toLowerCase();
+
+                const t = text.toLowerCase().replace(/o/g, '0').replace(/l/g, '1'); // corrección OCR común
 
                 // Consumo
-                const c = t.match(/(\d{2,5})\s*kwh/i);
-                consumoGlobal = c ? parseInt(c[1]) : 350;
+                const c = t.match(/consumo.*?(\d{3,5})/);
+                if (c) consumo = parseInt(c[1]);
 
-                // Gasto total
-                const g = t.match(/(\d{1,4}[,.]\d{2})\s*€/i);
-                gastoActualGlobal = g ? parseFloat(g[1].replace(',', '.')) : 85;
+                // Potencia contratada
+                const p = t.match(/potencia contratada.*?(\d+[.,]\d+)/);
+                if (p) potencia = parseFloat(p[1].replace(',', '.'));
 
                 // Alquiler
-                const a = t.match(/alquiler.*?(\d+[,.]\d{2})/i);
-                alquilerGlobal = a ? parseFloat(a[1].replace(',', '.')) : 0.81;
+                const a = t.match(/alquiler.*?(\d+[.,]\d{2})/);
+                if (a) alquiler = parseFloat(a[1].replace(',', '.'));
 
-                estado.textContent = `Leído: ${consumoGlobal} kWh · ${gastoActualGlobal.toFixed(2)}€`;
-                document.getElementById("consumoManual").value = consumoGlobal;
-                document.getElementById("gastoManual").value = gastoActualGlobal.toFixed(2);
-                document.getElementById("alquilerManual").value = alquilerGlobal.toFixed(2);
-                manual.style.display = "block";
-            } catch { 
-                estado.textContent = "Lectura fallida → modo manual";
-                manual.style.display = "block";
+                // Importe total
+                const g = t.match(/(importe total|a pagar|total factura).*?(\d{1,4}[,.]\d{2})/);
+                if (g) gastoActual = parseFloat(g[2].replace(',', '.'));
+
+                estado.textContent = `Leído: ${consumo} kWh · ${potencia} kW · ${gastoActual.toFixed(2)}€`;
+            } catch (e) {
+                estado.textContent = "Factura no leída → usando valores estimados";
             }
 
             fetch(GOOGLE_SCRIPT_URL + "?email=" + encodeURIComponent(email));
-            setTimeout(() => mostrarResultados(consumoGlobal, gastoActualGlobal, alquilerGlobal), 1500);
+
+            setTimeout(() => mostrarResultados(consumo, potencia, alquiler, gastoActual), 1500);
         }
 
-        function calcularConManual() {
-            consumoGlobal = parseFloat(document.getElementById("consumoManual").value) || 350;
-            gastoActualGlobal = parseFloat(document.getElementById("gastoManual").value) || 85;
-            alquilerGlobal = parseFloat(document.getElementById("alquilerManual").value) || 0.81;
-            mostrarResultados(consumoGlobal, gastoActualGlobal, alquilerGlobal);
-        }
-
-        function mostrarResultados(consumo, gastoActual, alquiler) {
+        function mostrarResultados(consumo, potencia, alquiler, gastoActual) {
             const resultado = document.getElementById("resultado");
+            const dias = 30;
             let html = '<h2 style="grid-column:1/-1; color:#a5f3fc; margin-bottom:30px;">¡Tus mejores ofertas!</h2>';
 
             tarifas.forEach(t => {
-                // CÁLCULO REAL OFICIAL
                 const energia = consumo * t.kwh;
-                const potencia = (t.potencia_punta * diasFacturados + t.potencia_valle * diasFacturados);
-                const base = energia + potencia;
-                const impuestoElectrico = base * 0.0511;
-                const baseImponible = base + impuestoElectrico + alquiler;
-                const iva = baseImponible * 0.21;
-                const totalSinDesc = baseImponible + iva;
+                const potenciaCoste = (potencia * t.pot_punta * dias) + (potencia * t.pot_valle * dias);
+                const base = energia + potenciaCoste;
+                const impuesto = base * 0.05113;
+                const baseIVA = base + impuesto + alquiler;
+                const iva = baseIVA * 0.21;
+                const totalSinDesc = baseIVA + iva;
                 const totalConDesc = totalSinDesc * (1 - t.descuento / 100);
                 const ahorroAnual = Math.round((gastoActual - totalConDesc) * 12);
 
