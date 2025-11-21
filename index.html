@@ -23,7 +23,11 @@
     <div id="resultado" class="resultado" style="display:none; margin-top:60px;"></div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5"></script>
+<script src="https://unpkg.com/tesseract.js@v2.1.5/dist/tesseract.min.js"></script>
+<script>
+  const { createWorker } = Tesseract;
+</script>
 <script src="script.js"></script>
 </body>
+
 </html>
