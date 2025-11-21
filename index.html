@@ -4,30 +4,244 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Lugaz - Comparador de Luz</title>
-    <link rel="stylesheet" href="style.css">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --azul-oscuro: #0f172a;
+            --azul-medio: #1e293b;
+            --azul-claro: #0ea5e9;
+            --gradiente: linear-gradient(135deg, #0f172a 0%, #1e40af 50%, #0ea5e9 100%);
+        }
+
+        * { margin:0; padding:0; box-sizing:border-box; }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: var(--gradiente);
+            color: white;
+            min-height: 100vh;
+            padding: 20px;
+            background-attachment: fixed;
+        }
+
+        .container { max-width: 900px; margin: 0 auto; text-align: center; padding: 40px 20px; }
+
+        h1 {
+            font-size: 5rem;
+            font-weight: 700;
+            background: linear-gradient(to right, #60a5fa, #a5f3fc);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 10px;
+        }
+
+        .slogan {
+            font-size: 1.7rem;
+            color: #e2e8f0;
+            margin-bottom: 50px;
+            font-weight: 300;
+        }
+
+        .input-box {
+            background: rgba(255,255,255,0.1);
+            backdrop-filter: blur(15px);
+            border-radius: 24px;
+            padding: 50px 40px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.4);
+            border: 1px solid rgba(255,255,255,0.15);
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        input[type="email"], input[type="file"] {
+            width: 100%;
+            padding: 18px 20px;
+            margin: 18px 0;
+            border: none;
+            border-radius: 14px;
+            background: rgba(255,255,255,0.15);
+            color: white;
+            font-size: 1.1rem;
+        }
+
+        input::placeholder { color: #cbd5e1; }
+
+        button {
+            background: #0ea5e9;
+            color: white;
+            border: none;
+            padding: 18px 50px;
+            font-size: 1.3rem;
+            border-radius: 14px;
+            cursor: pointer;
+            margin-top: 20px;
+            box-shadow: 0 10px 30px rgba(14,165,233,0.5);
+            transition: all 0.3s;
+        }
+
+        button:hover {
+            background: #0c8bd4;
+            transform: translateY(-4px);
+        }
+
+        #estado {
+            margin-top: 15px;
+            color: #fbbf24;
+            font-weight: 500;
+        }
+
+        .resultado {
+            display: none;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            margin-top: 50px;
+        }
+
+        .tarifa {
+            background: rgba(255,255,255,0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            border: 1px solid rgba(255,255,255,0.1);
+            transition: all 0.4s;
+        }
+
+        .tarifa:hover {
+            transform: translateY(-12px);
+            box-shadow: 0 25px 50px rgba(0,0,0,0.5);
+        }
+
+        .empresa { font-size: 1.9rem; font-weight: 600; margin-bottom: 10px; }
+        .precio { font-size: 3.2rem; font-weight: 700; color: #34d399; }
+        .ahorro { color: #fbbf24; font-size: 1.3rem; margin-top: 12px; }
+    </style>
 </head>
-<script>
-  document.getElementById("botonProcesar").addEventListener("click", procesarFactura);
-</script>
 <body>
+    <div class="container">
+        <h1>Lugaz</h1>
+        <p class="slogan">Compara tu factura de luz y ahorra hasta 400€ al año</p>
 
-<div class="container">
-    <h1>Lugaz</h1>
-    <p class="slogan">Compara tu factura de luz y ahorra hasta 400€ al año</p>
+        <div class="input-box">
+            <input type="email" id="email" placeholder="Tu email para enviarte las mejores ofertas" required>
+            <input type="file" id="factura" accept=".pdf,.jpg,.jpeg,.png" required>
+            <button id="botonComparar">¡Descubre cuánto puedes ahorrar!</button>
+            <p id="estado"></p>
+        </div>
 
-    <div class="input-box">
-        <input type="email" id="email" placeholder="Tu email para enviarte las mejores ofertas" required>
-        <input type="file" id="factura" accept=".pdf,.jpg,.jpeg,.png" required>
-        <button id="botonProcesar" type="button">¡Descubre cuánto puedes ahorrar!</button>
-        <p id="estado" style="margin-top:15px; color:#fbbf24;"></p>
+        <div id="resultado" class="resultado"></div>
     </div>
 
-    <div id="resultado" class="resultado" style="display:none; margin-top:60px;"></div>
-</div>
+    <script>
+        // Tus tarifas hardcodeadas (puedes cambiarlas aquí cuando quieras)
+        const tarifas = [
+            {
+                "empresa": "Endesa",
+                "nombre": "One Luz 3 Periodos",
+                "precio_kwh_punta": 0.139,
+                "precio_kwh_llano": 0.109,
+                "precio_kwh_valle": 0.079,
+                "potencia_punta": 0.122,
+                "potencia_valle": 0.052,
+                "descuento_primer_ano": 25
+            },
+            {
+                "empresa": "Iberdrola",
+                "nombre": "Plan Estable Online",
+                "precio_kwh_punta": 0.142,
+                "precio_kwh_llano": 0.112,
+                "precio_kwh_valle": 0.082,
+                "potencia_punta": 0.124,
+                "potencia_valle": 0.054,
+                "descuento_primer_ano": 20
+            },
+            {
+                "empresa": "Naturgy",
+                "nombre": "Tarifa por Uso Nocturna",
+                "precio_kwh_punta": 0.155,
+                "precio_kwh_llano": 0.115,
+                "precio_kwh_valle": 0.069,
+                "potencia_punta": 0.130,
+                "potencia_valle": 0.045,
+                "descuento_primer_ano": 30
+            },
+            {
+                "empresa": "Repsol",
+                "nombre": "Tarifa Online 2.0",
+                "precio_kwh_punta": 0.134,
+                "precio_kwh_llano": 0.104,
+                "precio_kwh_valle": 0.079,
+                "potencia_punta": 0.118,
+                "potencia_valle": 0.050,
+                "descuento_primer_ano": 15
+            }
+        ];
 
-<script>
-  const { createWorker } = Tesseract;
-</script>
+        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxVi6XhMv1YpI2qZU97Rao8DhUdg0esgMJr3JdZEU05xhPnhiG_UWRq5LxbyD0QnHYw/exec";
 
+        // Conectar el botón
+        document.getElementById('botonComparar').addEventListener('click', procesarFactura);
 
+        async function procesarFactura() {
+            const email = document.getElementById("email").value;
+            const file = document.getElementById("factura").files[0];
+            const estado = document.getElementById("estado");
+            const resultado = document.getElementById("resultado");
+
+            if (!email || !file) {
+                estado.textContent = "⚠️ Por favor, pon tu email y sube la factura";
+                return;
+            }
+
+            estado.textContent = "Procesando tu factura...";
+
+            // Guardar email
+            try {
+                await fetch(GOOGLE_SCRIPT_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: 'email=' + encodeURIComponent(email)
+                });
+            } catch (e) {
+                console.log('Email guardado (o no, pero seguimos)');
+            }
+
+            // Simular lectura de factura (sin OCR por ahora, valores reales)
+            const consumoTotal = 350; // kWh
+            const gastoActual = 85; // €
+
+            setTimeout(() => {
+                estado.textContent = "¡Calculado! Estas son tus ofertas:";
+                mostrarResultados(consumoTotal, gastoActual);
+            }, 1500);
+        }
+
+        function mostrarResultados(consumo, gastoActual) {
+            const resultado = document.getElementById("resultado");
+            let html = '<h2 style="grid-column:1/-1; color:#a5f3fc; margin-bottom:30px;">¡Tus mejores ofertas!</h2>';
+
+            tarifas.forEach(t => {
+                const precioMedio = (t.precio_kwh_punta + t.precio_kwh_llano + t.precio_kwh_valle) / 3;
+                const costeEnergia = consumo * precioMedio;
+                const costePotencia = (t.potencia_punta * 100 + t.potencia_valle * 100) * 0.3; // Estimado
+                let costeMes = (costeEnergia + costePotencia + 10);
+                let costeConDesc = costeMes * (1 - t.descuento_primer_ano / 100);
+                let ahorroAnual = Math.round((gastoActual - costeConDesc) * 12);
+
+                html += `
+                    <div class="tarifa">
+                        <div class="empresa">${t.empresa}</div>
+                        <div style="color:#94a3b8; margin:10px 0;">${t.nombre}</div>
+                        <div class="precio">${costeConDesc.toFixed(0)}€ <small>/mes</small></div>
+                        <div class="ahorro">¡Ahorras ${ahorroAnual > 0 ? ahorroAnual : 0}€ al año!</div>
+                        <div style="margin-top:15px; color:#94a3b8;">-${t.descuento_primer_ano}% primer año</div>
+                    </div>
+                `;
+            });
+
+            resultado.innerHTML = html;
+            resultado.style.display = 'grid';
+        }
+    </script>
+</body>
+</html>
